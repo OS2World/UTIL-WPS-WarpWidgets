@@ -1,0 +1,27 @@
+# Build output
+bin/
+
+# qmake generated
+src/Makefile
+src/.qmake.stash
+src/moc_predefs.h
+src/*.moc
+src/moc_*.cpp
+src/qrc_*.cpp
+
+# Logs
+*.log
+out.log
+run.log
+
+# OS/2 specific
+*.obj
+*.map
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Build archives / releases
+BUILD/
+*.zip

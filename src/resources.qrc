@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="widgets/clock.qml">../widgets/clock.qml</file>
+        <file alias="widgets/sysmon.qml">../widgets/sysmon.qml</file>
+    </qresource>
+</RCC>
