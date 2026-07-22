@@ -3,7 +3,7 @@ import QtQuick 2.9
 Rectangle {
     id: root
     width:  220 * Widget.fontScale
-    height: 340 * Widget.fontScale
+    height: 368 * Widget.fontScale
     color:  Widget.bgColor
     radius: 12
 

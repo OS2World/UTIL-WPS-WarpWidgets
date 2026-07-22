@@ -1,16 +1,19 @@
 @echo off
 rem WarpWidgets build script for ArcaOS / OS2 Warp
-rem Run this from the project root: Z:\
-rem Output: Z:\bin\warpwidgets.exe
+rem Run from the project root directory.
+rem Output: bin\warpwidgets.exe
+rem
+rem If the build fails with "wlink.exe: No such file or directory",
+rem change the line below to:  set EMXOMFLD_LINKER=wl.exe
 
-rem Required linker settings for bww bitwise works Qt 5.15 on OS/2
 set EMXOMFLD_TYPE=WLINK
 set EMXOMFLD_LINKER=wlink.exe
 
-rem Move into the source directory
-cd src
+rem ── Create bin directory if needed ───────────────────────────────────────────
+if not exist bin md bin
 
-rem Generate Makefile
+rem ── Generate Makefile ────────────────────────────────────────────────────────
+cd src
 echo Generating Makefile...
 qmake-qt5 warpwidgets.pro
 if errorlevel 1 (
@@ -19,16 +22,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem Build and save log
+rem ── Build (stderr to screen so errors are visible; stdout to log) ─────────────
 echo Building...
-make > ..\bin\build.log 2>&1
-if errorlevel 1 (
-    echo ERROR: Build failed. Check bin\build.log for details.
-    type ..\bin\build.log
-    cd ..
+make > ..\bin\build.log
+cd ..
+
+rem ── Check by file existence, not exit code ───────────────────────────────────
+if exist bin\warpwidgets.exe (
+    echo.
+    echo Build successful. Binary: bin\warpwidgets.exe
+) else (
+    echo.
+    echo Build FAILED. See bin\build.log for details.
     exit /b 1
 )
-
-cd ..
-echo.
-echo Build successful. Binary: bin\warpwidgets.exe

@@ -370,7 +370,7 @@ void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
     static const QMap<QString, int> kEstH = {
         {"clock.qml",       110}, {"analogclock.qml", 220}, {"calendar.qml",  210},
         {"sysmon.qml",      130}, {"diskusage.qml",   170}, {"weather.qml",   210},
-        {"calculator.qml",  340}, {"welcome.qml",     100},
+        {"calculator.qml",  368}, {"welcome.qml",     100},
     };
     static const int kDefaultH = 150;
     static const int kDefaultW = 280;
