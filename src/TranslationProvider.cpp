@@ -2,7 +2,7 @@
 
 TranslationProvider::TranslationProvider(QObject *parent)
     : QObject(parent)
-    , m_settings(QSettings::IniFormat, QSettings::UserScope, "OS2World", "WarpWidgets")
+    , m_settings(QSettings::IniFormat, QSettings::UserScope, "WarpWidgets", "WarpWidgets")
 {
     build();
     m_lang = m_settings.value("app/language", "en").toString();

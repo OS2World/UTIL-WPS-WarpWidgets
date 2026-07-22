@@ -10,6 +10,8 @@
 #include "WeatherProvider.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QQmlEngine>
 #include <QQmlContext>
 #include <QQuickView>
@@ -44,7 +46,7 @@ public:
                               const QString &settingsKey)
         : QObject(view), m_view(view), m_engine(engine), m_key(settingsKey)
         , m_settings(QSettings::IniFormat, QSettings::UserScope,
-                     "OS2World", APP_NAME)
+                     "WarpWidgets", APP_NAME)
     {
         m_settings.beginGroup("widgets");
         m_fontScale = m_settings.value(m_key + "/fontScale", 1.0).toDouble();
@@ -88,7 +90,7 @@ public slots:
 
     Q_INVOKABLE QString getExtra(const QString &key, const QString &def = QString()) const
     {
-        QSettings s(QSettings::IniFormat, QSettings::UserScope, "OS2World", APP_NAME);
+        QSettings s(QSettings::IniFormat, QSettings::UserScope, "WarpWidgets", APP_NAME);
         s.beginGroup("widgets");
         QString v = s.value(m_key + "/extra/" + key, def).toString();
         s.endGroup();
@@ -320,7 +322,7 @@ private:
 WidgetEngine::WidgetEngine(QObject *parent)
     : QObject(parent)
     , m_settings(QSettings::IniFormat, QSettings::UserScope,
-                 "OS2World", APP_NAME)
+                 "WarpWidgets", APP_NAME)
 {
     connect(qApp, &QCoreApplication::aboutToQuit, this, &WidgetEngine::saveState);
 }
@@ -330,11 +332,63 @@ WidgetEngine::~WidgetEngine()
     qDeleteAll(m_views);
 }
 
+// Return the usable screen rectangle (falls back to 1024×768 if Qt can't query it).
+static QRect screenRect()
+{
+    QRect r;
+    if (QGuiApplication::primaryScreen())
+        r = QGuiApplication::primaryScreen()->availableGeometry();
+    if (r.isEmpty())
+        r = QRect(0, 0, 1024, 768);
+    return r;
+}
+
+// Clamp a saved position so the widget is at least partially visible.
+// minVisible = how many pixels must remain on-screen (top-left corner minimum).
+static QPoint clampToScreen(const QPoint &pos, int minVisible = 40)
+{
+    QRect s = screenRect();
+    int x = qBound(s.left(), pos.x(), s.right()  - minVisible);
+    int y = qBound(s.top(),  pos.y(), s.bottom() - minVisible);
+    return QPoint(x, y);
+}
+
 void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
 {
     m_widgetDir = dirPath;
     QDir dir(dirPath);
     if (!dir.exists()) { qWarning() << "Widget dir not found:" << dirPath; return; }
+
+    QRect  screen  = screenRect();
+    // Auto-placement cursor: fills a column then starts a new one to the right.
+    int    autoX   = screen.left() + 20;
+    int    autoY   = screen.top()  + 20;
+    int    colW    = 0;   // widest widget in the current column
+
+    // Estimated default heights for auto-placement (avoids loading before placing).
+    // These match the QML height: N * Widget.fontScale with default fontScale=1.
+    static const QMap<QString, int> kEstH = {
+        {"clock.qml",       110}, {"analogclock.qml", 220}, {"calendar.qml",  210},
+        {"sysmon.qml",      130}, {"diskusage.qml",   170}, {"weather.qml",   210},
+        {"calculator.qml",  340}, {"welcome.qml",     100},
+    };
+    static const int kDefaultH = 150;
+    static const int kDefaultW = 280;
+
+    auto nextAutoPos = [&](const QString &filename) -> QPoint {
+        int wh = kEstH.value(filename, kDefaultH);
+
+        // If this widget would overflow the screen bottom, start a new column.
+        if (autoY + wh > screen.bottom() - 10 && colW > 0) {
+            autoX += colW + 16;
+            autoY  = screen.top() + 20;
+            colW   = 0;
+        }
+        QPoint p(autoX, autoY);
+        autoY += wh + 10;
+        colW = qMax(colW, kDefaultW);
+        return p;
+    };
 
     // Load regular (single-instance) widgets
     for (const QFileInfo &fi : dir.entryInfoList({"*.qml"}, QDir::Files)) {
@@ -348,13 +402,12 @@ void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
 
         if (!open) continue;
 
-        QPoint pos(20, 20);
-        if (sx >= 0 && sy >= 0) {
-            pos = QPoint(sx, sy);
-        } else {
-            for (QQuickView *v : m_views)
-                pos.ry() += v->rootObject() ? (int)v->rootObject()->height() + 10 : 0;
-        }
+        QPoint pos;
+        if (sx >= 0 && sy >= 0)
+            pos = clampToScreen(QPoint(sx, sy));
+        else
+            pos = nextAutoPos(fi.fileName());
+
         loadWidget(fi.absoluteFilePath(), pos, key);
     }
 
@@ -372,7 +425,13 @@ void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
             int  sy   = m_settings.value(key + "/y", -1).toInt();
             m_settings.endGroup();
             if (!open) continue;
-            QPoint pos(sx >= 0 && sy >= 0 ? QPoint(sx, sy) : QPoint(40 + i * 20, 40 + i * 20));
+
+            QPoint pos;
+            if (sx >= 0 && sy >= 0)
+                pos = clampToScreen(QPoint(sx, sy));
+            else
+                pos = clampToScreen(QPoint(screen.left() + 40 + (i % 5) * 30,
+                                           screen.top()  + 40 + (i % 5) * 30));
             loadWidget(postitPath, pos, key);
         }
         // If no saved instances, open one by default

@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName("WarpWidgets");
     app.setApplicationVersion("1.0.0");
-    app.setOrganizationName("OS2World");
+    app.setOrganizationName("WarpWidgets");
 
     TranslationProvider *lang = new TranslationProvider(&app);
 

@@ -30,7 +30,7 @@ WeatherProvider::WeatherProvider(QObject *parent)
     , m_defaultCount(DEFAULT_CITIES.size())
 {
     // Append saved custom cities
-    QSettings s(QSettings::IniFormat, QSettings::UserScope, "OS2World", "WarpWidgets");
+    QSettings s(QSettings::IniFormat, QSettings::UserScope, "WarpWidgets", "WarpWidgets");
     QStringList custom = s.value("weather/customCities").toStringList();
     for (const QString &c : custom)
         if (!c.trimmed().isEmpty()) m_cities.append(c.trimmed());
@@ -50,7 +50,7 @@ WeatherProvider::WeatherProvider(QObject *parent)
 
 void WeatherProvider::saveCity()
 {
-    QSettings s(QSettings::IniFormat, QSettings::UserScope, "OS2World", "WarpWidgets");
+    QSettings s(QSettings::IniFormat, QSettings::UserScope, "WarpWidgets", "WarpWidgets");
     s.setValue("weather/cityIndex", m_cityIndex);
     s.sync();
 }
@@ -117,7 +117,7 @@ void WeatherProvider::removeCurrentCity()
 
 void WeatherProvider::saveCustomCities()
 {
-    QSettings s(QSettings::IniFormat, QSettings::UserScope, "OS2World", "WarpWidgets");
+    QSettings s(QSettings::IniFormat, QSettings::UserScope, "WarpWidgets", "WarpWidgets");
     s.setValue("weather/customCities", QVariant(m_cities.mid(m_defaultCount)));
     s.sync();
 }
