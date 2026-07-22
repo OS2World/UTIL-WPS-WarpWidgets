@@ -172,34 +172,65 @@ void SysInfoProvider::readCpu()
 }
 
 // ---------------------------------------------------------------------------
-// Disk  (boot/root volume)
+// Disk  (all drives)
 // ---------------------------------------------------------------------------
 void SysInfoProvider::readDisk()
 {
+    m_drives.clear();
+
 #ifdef Q_OS_OS2
-    // Query drive C: (index 3 in OS/2: 1=A, 2=B, 3=C)
-    struct {
+    struct FSALLOCATE {
         ULONG idFileSystem;
         ULONG cSectorUnit;
         ULONG cUnit;
         ULONG cUnitAvail;
         USHORT cbSector;
-    } fsa;
-    if (DosQueryFSInfo(3, 1, &fsa, sizeof(fsa)) == 0) {
+    };
+    // OS/2 drive numbers: 1=A, 2=B, 3=C, ..., 26=Z. Skip A/B (floppies).
+    for (int driveNum = 3; driveNum <= 26; ++driveNum) {
+        FSALLOCATE fsa;
+        memset(&fsa, 0, sizeof(fsa));
+        if (DosQueryFSInfo((ULONG)driveNum, 1, &fsa, sizeof(fsa)) != 0)
+            continue;
         qint64 total = (qint64)fsa.cUnit      * fsa.cSectorUnit * fsa.cbSector;
+        if (total <= 0) continue;
         qint64 free_ = (qint64)fsa.cUnitAvail * fsa.cSectorUnit * fsa.cbSector;
-        m_diskTotalMB = total / (1024 * 1024);
-        m_diskFreeMB  = free_ / (1024 * 1024);
-        m_diskUsedMB  = m_diskTotalMB - m_diskFreeMB;
-        m_diskPercent = m_diskTotalMB > 0
-                        ? (int)(m_diskUsedMB * 100 / m_diskTotalMB) : 0;
+        qint64 totalMB = total / (1024 * 1024);
+        qint64 freeMB  = free_ / (1024 * 1024);
+        qint64 usedMB  = totalMB - freeMB;
+        int    pct     = (int)(usedMB * 100 / totalMB);
+
+        QVariantMap entry;
+        entry["letter"]  = QString(QChar('A' + driveNum - 1)) + ":";
+        entry["totalMB"] = totalMB;
+        entry["freeMB"]  = freeMB;
+        entry["usedMB"]  = usedMB;
+        entry["percent"] = pct;
+        m_drives.append(entry);
     }
 #else
-    QStorageInfo si(QStringLiteral("/"));
-    m_diskTotalMB = si.bytesTotal()     / (1024 * 1024);
-    m_diskFreeMB  = si.bytesFree()      / (1024 * 1024);
-    m_diskUsedMB  = m_diskTotalMB - m_diskFreeMB;
-    m_diskPercent = m_diskTotalMB > 0
-                    ? (int)(m_diskUsedMB * 100 / m_diskTotalMB) : 0;
+    for (const QStorageInfo &si : QStorageInfo::mountedVolumes()) {
+        if (!si.isReady() || si.isReadOnly()) continue;
+        qint64 totalMB = si.bytesTotal() / (1024 * 1024);
+        if (totalMB <= 0) continue;
+        qint64 freeMB  = si.bytesFree()  / (1024 * 1024);
+        qint64 usedMB  = totalMB - freeMB;
+        QVariantMap entry;
+        entry["letter"]  = si.rootPath();
+        entry["totalMB"] = totalMB;
+        entry["freeMB"]  = freeMB;
+        entry["usedMB"]  = usedMB;
+        entry["percent"] = (int)(usedMB * 100 / totalMB);
+        m_drives.append(entry);
+    }
 #endif
+
+    // Keep legacy single-drive properties in sync with the first drive (C: on OS/2)
+    if (!m_drives.isEmpty()) {
+        QVariantMap first = m_drives.first().toMap();
+        m_diskTotalMB = first["totalMB"].toLongLong();
+        m_diskFreeMB  = first["freeMB"].toLongLong();
+        m_diskUsedMB  = first["usedMB"].toLongLong();
+        m_diskPercent = first["percent"].toInt();
+    }
 }

@@ -5,6 +5,7 @@
 #include <QStandardPaths>
 #include "WidgetEngine.h"
 #include "SysInfoProvider.h"
+#include "TranslationProvider.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,7 +14,10 @@ int main(int argc, char *argv[])
     app.setApplicationVersion("1.0.0");
     app.setOrganizationName("OS2World");
 
+    TranslationProvider *lang = new TranslationProvider(&app);
+
     WidgetEngine engine;
+    engine.setLang(lang);
 
     // Register C++ types so QML widgets can use them
     qmlRegisterSingletonType<SysInfoProvider>(

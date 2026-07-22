@@ -29,7 +29,7 @@ Rectangle {
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Right-drag to move  •  ▾ for menu"
+            text: (Lang.language, Lang.t("welcome.hint"))
             color: "#666666"
             font.pixelSize: Math.round(13 * Widget.fontScale)
         }

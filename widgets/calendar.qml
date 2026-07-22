@@ -97,10 +97,12 @@ Rectangle {
         "january":0,"february":1,"march":2,"april":3,"may":4,"june":5,
         "july":6,"august":7,"september":8,"october":9,"november":10,"december":11
     })
-    property var monthNames: [
-        "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
-        "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
-    ]
+    property var monthNames: (Lang.language, [
+        Lang.t("month.1"),  Lang.t("month.2"),  Lang.t("month.3"),
+        Lang.t("month.4"),  Lang.t("month.5"),  Lang.t("month.6"),
+        Lang.t("month.7"),  Lang.t("month.8"),  Lang.t("month.9"),
+        Lang.t("month.10"), Lang.t("month.11"), Lang.t("month.12")
+    ])
     property int cMonth: { var n=(_dp[0]||"").toLowerCase(); var v=monthMap[n]; return v!==undefined?v:0 }
     property int cDay:   parseInt(_dp[1]||"1")    || 1
     property int cYear:  parseInt(_dp[2]||"2000") || 2000
@@ -188,7 +190,11 @@ Rectangle {
                     width: parent.width
                     property real cw: width / 7
                     Repeater {
-                        model: ["M","T","W","T","F","S","S"]
+                        model: (Lang.language, [
+                            Lang.t("day.mon"), Lang.t("day.tue"), Lang.t("day.wed"),
+                            Lang.t("day.thu"), Lang.t("day.fri"), Lang.t("day.sat"),
+                            Lang.t("day.sun")
+                        ])
                         Text {
                             width: parent.cw
                             text:  modelData

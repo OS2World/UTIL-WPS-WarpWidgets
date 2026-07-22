@@ -9,12 +9,14 @@ SOURCES += \
     main.cpp \
     WidgetEngine.cpp \
     SysInfoProvider.cpp \
-    WeatherProvider.cpp
+    WeatherProvider.cpp \
+    TranslationProvider.cpp
 
 HEADERS += \
     WidgetEngine.h \
     SysInfoProvider.h \
-    WeatherProvider.h
+    WeatherProvider.h \
+    TranslationProvider.h
 
 RESOURCES += \
     resources.qrc

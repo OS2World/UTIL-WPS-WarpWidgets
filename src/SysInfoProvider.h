@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
+#include <QVariantList>
 
 #ifdef Q_OS_OS2
 #  define INCL_DOS
@@ -22,10 +23,11 @@ class SysInfoProvider : public QObject
     Q_PROPERTY(int     ramPercent  READ ramPercent  NOTIFY statsChanged)
     Q_PROPERTY(qint64  ramUsedMB   READ ramUsedMB   NOTIFY statsChanged)
     Q_PROPERTY(qint64  ramTotalMB  READ ramTotalMB  NOTIFY statsChanged)
-    Q_PROPERTY(int     diskPercent READ diskPercent NOTIFY statsChanged)
-    Q_PROPERTY(qint64  diskFreeMB  READ diskFreeMB  NOTIFY statsChanged)
-    Q_PROPERTY(qint64  diskUsedMB  READ diskUsedMB  NOTIFY statsChanged)
-    Q_PROPERTY(qint64  diskTotalMB READ diskTotalMB NOTIFY statsChanged)
+    Q_PROPERTY(int          diskPercent READ diskPercent NOTIFY statsChanged)
+    Q_PROPERTY(qint64       diskFreeMB  READ diskFreeMB  NOTIFY statsChanged)
+    Q_PROPERTY(qint64       diskUsedMB  READ diskUsedMB  NOTIFY statsChanged)
+    Q_PROPERTY(qint64       diskTotalMB READ diskTotalMB NOTIFY statsChanged)
+    Q_PROPERTY(QVariantList drives      READ drives      NOTIFY statsChanged)
 
 public:
     explicit SysInfoProvider(QObject *parent = nullptr);
@@ -37,10 +39,11 @@ public:
     int     ramPercent()  const { return m_ramPercent; }
     qint64  ramUsedMB()   const { return m_ramUsedMB; }
     qint64  ramTotalMB()  const { return m_ramTotalMB; }
-    int     diskPercent() const { return m_diskPercent; }
-    qint64  diskFreeMB()  const { return m_diskFreeMB; }
-    qint64  diskUsedMB()  const { return m_diskUsedMB; }
-    qint64  diskTotalMB() const { return m_diskTotalMB; }
+    int          diskPercent() const { return m_diskPercent; }
+    qint64       diskFreeMB()  const { return m_diskFreeMB; }
+    qint64       diskUsedMB()  const { return m_diskUsedMB; }
+    qint64       diskTotalMB() const { return m_diskTotalMB; }
+    QVariantList drives()      const { return m_drives; }
 
 signals:
     void timeChanged();
@@ -58,10 +61,11 @@ private:
     int    m_ramPercent  = 0;
     qint64 m_ramUsedMB   = 0;
     qint64 m_ramTotalMB  = 0;
-    int    m_diskPercent = 0;
-    qint64 m_diskFreeMB  = 0;
-    qint64 m_diskUsedMB  = 0;
-    qint64 m_diskTotalMB = 0;
+    int          m_diskPercent = 0;
+    qint64       m_diskFreeMB  = 0;
+    qint64       m_diskUsedMB  = 0;
+    qint64       m_diskTotalMB = 0;
+    QVariantList m_drives;
 
     void readRam();
     void readCpu();

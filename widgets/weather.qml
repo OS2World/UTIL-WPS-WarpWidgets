@@ -51,7 +51,7 @@ Rectangle {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - 18
-                        text:  Weather.loading ? "Loading..." : Weather.city
+                        text:  Weather.loading ? (Lang.language, Lang.t("weather.loading")) : Weather.city
                         color: "#44AAFF"
                         font { pixelSize: Math.round(14 * Widget.fontScale); bold: true }
                         elide: Text.ElideRight
@@ -232,14 +232,14 @@ Rectangle {
         Row {
             width: parent.width; spacing: 8
             Text {
-                text: Weather.lastUpdated.length ? "Updated " + Weather.lastUpdated : ""
+                text: Weather.lastUpdated.length ? (Lang.language, Lang.t("weather.updated")) + Weather.lastUpdated : ""
                 color: "#444444"; font.pixelSize: Math.round(11 * Widget.fontScale)
                 width: parent.width - 60
             }
             Rectangle {
                 width: 54; height: 18; radius: 4
                 color: refreshArea.containsMouse ? "#334466" : "#222222"
-                Text { anchors.centerIn: parent; text: "↻ Refresh"; color: "#44AAFF"; font.pixelSize: 11 }
+                Text { anchors.centerIn: parent; text: (Lang.language, Lang.t("weather.refresh")); color: "#44AAFF"; font.pixelSize: 11 }
                 MouseArea { id: refreshArea; anchors.fill: parent; hoverEnabled: true; onClicked: Weather.refresh() }
             }
         }

@@ -1,10 +1,12 @@
 #define INCL_WINWINDOWMGR
+#define INCL_WINMESSAGEMGR
 #define INCL_WINSWITCHLIST
 #define INCL_DOS
 #define INCL_DOSERRORS
 #include <cstdlib>
 #include "WidgetEngine.h"
 #include "SysInfoProvider.h"
+#include "TranslationProvider.h"
 #include "WeatherProvider.h"
 #include <QDir>
 #include <QFileInfo>
@@ -146,46 +148,47 @@ public slots:
         QMenu *menu = new QMenu();
         menu->setAttribute(Qt::WA_DeleteOnClose);
 
-        QAction *closeAct = menu->addAction("Close this widget");
+        TranslationProvider *lang = m_engine->lang();
+        auto L = [lang](const QString &key) { return lang ? lang->t(key) : key; };
 
-        QMenu *fontMenu = menu->addMenu("Font");
-        QAction *fInc = fontMenu->addAction("Increase  (Ctrl++)");
-        QAction *fDef = fontMenu->addAction("Default   (Ctrl+0)");
-        QAction *fDec = fontMenu->addAction("Decrease  (Ctrl-)");
+        QAction *closeAct = menu->addAction(L("menu.close"));
 
-        QString colorLabel = m_isGlobal
-            ? "Background Color  (applies to ALL widgets)"
-            : "Background Color";
+        QMenu *fontMenu = menu->addMenu(L("menu.font"));
+        QAction *fInc = fontMenu->addAction(L("menu.font.increase"));
+        QAction *fDef = fontMenu->addAction(L("menu.font.default"));
+        QAction *fDec = fontMenu->addAction(L("menu.font.decrease"));
+
+        QString colorLabel = m_isGlobal ? L("menu.color.all") : L("menu.color");
         QMenu *colorMenu = menu->addMenu(colorLabel);
 
-        struct Preset { const char *name; const char *hex; };
+        struct Preset { const char *key; const char *hex; };
         static const Preset presets[] = {
-            { "Dark Gray (default)", "#1A1A1A" },
-            { "Black",               "#000000" },
-            { "Dark Blue",           "#0A1628" },
-            { "Dark Green",          "#0A2010" },
-            { "Dark Purple",         "#1A0A28" },
-            { "Dark Red",            "#200808" },
-            { "Dark Teal",           "#082020" },
+            { "menu.color.darkgray",   "#1A1A1A" },
+            { "menu.color.black",      "#000000" },
+            { "menu.color.darkblue",   "#0A1628" },
+            { "menu.color.darkgreen",  "#0A2010" },
+            { "menu.color.darkpurple", "#1A0A28" },
+            { "menu.color.darkred",    "#200808" },
+            { "menu.color.darkteal",   "#082020" },
         };
         QList<QAction *> colorActs;
         for (const Preset &p : presets) {
-            QAction *act = colorMenu->addAction(p.name);
+            QAction *act = colorMenu->addAction(L(p.key));
             act->setData(QString(p.hex));
             colorActs << act;
         }
         colorMenu->addSeparator();
-        QAction *customAct = colorMenu->addAction("Custom...");
+        QAction *customAct = colorMenu->addAction(L("menu.color.custom"));
 
         QAction *newPostitAct = nullptr;
         QString postitPath = m_engine->postitPath();
         if (!postitPath.isEmpty())
-            newPostitAct = menu->addAction("New Post-It");
+            newPostitAct = menu->addAction(L("menu.newpostit"));
 
-        QMenu *addMenu = menu->addMenu("Add Widget");
+        QMenu *addMenu = menu->addMenu(L("menu.addwidget"));
         QStringList closed = m_engine->closedWidgets();
         if (closed.isEmpty()) {
-            QAction *none = addMenu->addAction("(all widgets are open)");
+            QAction *none = addMenu->addAction(L("menu.allopen"));
             none->setEnabled(false);
         } else {
             for (const QString &path : closed) {
@@ -196,8 +199,23 @@ public slots:
             }
         }
 
+        // Language submenu
+        if (lang) {
+            QMenu *langMenu = menu->addMenu(L("menu.language"));
+            const QString cur = lang->language();
+            for (const QString &code : TranslationProvider::availableCodes()) {
+                QAction *act = langMenu->addAction(TranslationProvider::nativeName(code));
+                act->setData(code);
+                act->setCheckable(true);
+                act->setChecked(code == cur);
+            }
+            connect(langMenu, &QMenu::triggered, [lang](QAction *a) {
+                lang->setLanguage(a->data().toString());
+            });
+        }
+
         menu->addSeparator();
-        QAction *quitAct = menu->addAction("Quit WarpWidgets");
+        QAction *quitAct = menu->addAction(L("menu.quit"));
 
         connect(menu, &QMenu::triggered, this, [=](QAction *chosen) {
             if (newPostitAct && chosen == newPostitAct) {
@@ -438,6 +456,7 @@ void WidgetEngine::loadWidget(const QString &qmlFile, const QPoint &pos,
     view->rootContext()->setContextProperty("SysInfo",    sysInfo);
     view->rootContext()->setContextProperty("Weather",    weather);
     view->rootContext()->setContextProperty("Widget",     ctrl);
+    view->rootContext()->setContextProperty("Lang",       m_lang);
     view->rootContext()->setContextProperty("widgetFile", qmlFile);
 
     view->setSource(QUrl::fromLocalFile(qmlFile));
@@ -458,12 +477,34 @@ void WidgetEngine::loadWidget(const QString &qmlFile, const QPoint &pos,
     view->show();
 
 #ifdef Q_OS_OS2
-    // Remove from XCenter / OS2 switch list so it doesn't appear in the taskbar
     {
         HWND hwnd = (HWND)view->winId();
+
+        // Remove from XCenter / OS2 switch list so it doesn't appear in the taskbar
         HSWITCH hsw = WinQuerySwitchHandle(hwnd, 0);
         if (hsw != NULLHANDLE)
             WinRemoveSwitchEntry(hsw);
+
+        // Make the window "sticky" in XPager so it appears on every virtual desktop.
+        // XWorkplace exposes XDM_TOGGLETRANSIENTSTICKY (WM_USER+431) on its daemon
+        // object window, whose handle is in the XWorkplace named shared-memory block.
+        {
+            // Minimal layout of XWPGLOBALSHARED — only the first field is needed
+            struct XWPGlobalShared { HWND hwndDaemonObject; };
+            XWPGlobalShared *pShared = nullptr;
+            if (DosGetNamedSharedMem((PPVOID)&pShared,
+                                     (PCSZ)"\\SHAREMEM\\XWORKPLC\\DMNSHARE.DAT",
+                                     PAG_READ) == 0)
+            {
+                HWND hwndDaemon = pShared->hwndDaemonObject;
+                if (hwndDaemon)
+                    WinSendMsg(hwndDaemon,
+                               WM_USER + 431,   /* XDM_TOGGLETRANSIENTSTICKY */
+                               (MPARAM)hwnd,
+                               (MPARAM)0);
+                DosFreeMem(pShared);
+            }
+        }
     }
 #endif
 
