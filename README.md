@@ -9,6 +9,7 @@ Desktop widget engine for ArcaOS / OS/2 Warp. Displays configurable floating wid
 * GCC 9.2.0 (i686-pc-os2-emx)
 * qmake-qt5
 * make
+* wlink
 
 ## DEPENDENCIES
 Install with yum before compiling:
