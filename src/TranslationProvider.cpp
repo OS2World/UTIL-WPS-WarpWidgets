@@ -12,13 +12,14 @@ TranslationProvider::TranslationProvider(QObject *parent)
 
 QStringList TranslationProvider::availableCodes()
 {
-    return { "en", "es", "de", "ru" };
+    return { "en", "es", "de", "nl", "ru" };
 }
 
 QString TranslationProvider::nativeName(const QString &code)
 {
     if (code == "es") return QString::fromUtf8("Espa\xC3\xB1ol");
     if (code == "de") return QString::fromUtf8("Deutsch");
+    if (code == "nl") return QString::fromUtf8("Nederlands");
     if (code == "ru") return QString::fromUtf8("\xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9");
     return "English";
 }
@@ -65,7 +66,7 @@ void TranslationProvider::build()
     add("menu.close",
         "Close this widget",
         "Cerrar este widget",
-        "Widget schlie\xC3\x9Fen",
+        "Widget schlie\xC3\x9F" "en",
         "\xD0\x97\xD0\xB0\xD0\xBA\xD1\x80\xD1\x8B\xD1\x82\xD1\x8C \xD0\xB2\xD0\xB8\xD0\xB4\xD0\xB6\xD0\xB5\xD1\x82");
 
     add("menu.font",
@@ -77,7 +78,7 @@ void TranslationProvider::build()
     add("menu.font.increase",
         "Increase  (Ctrl++)",
         "Aumentar  (Ctrl++)",
-        "Gr\xC3\xB6\xC3\x9Fer  (Ctrl++)",
+        "Gr\xC3\xB6\xC3\x9F" "er  (Ctrl++)",
         "\xD0\xA3\xD0\xB2\xD0\xB5\xD0\xBB\xD0\xB8\xD1\x87\xD0\xB8\xD1\x82\xD1\x8C  (Ctrl++)");
 
     add("menu.font.default",
@@ -104,47 +105,59 @@ void TranslationProvider::build()
         "Hintergrundfarbe",
         "\xD0\xA6\xD0\xB2\xD0\xB5\xD1\x82 \xD1\x84\xD0\xBE\xD0\xBD\xD0\xB0");
 
-    add("menu.color.darkgray",
-        "Dark Gray (default)",
-        "Gris oscuro (predeterminado)",
-        "Dunkelgrau (Standard)",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD1\x81\xD0\xB5\xD1\x80\xD1\x8B\xD0\xB9 (\xD0\xBF\xD0\xBE \xD1\x83\xD0\xBC\xD0\xBE\xD0\xBB\xD1\x87.)");
+    add("menu.color.white",
+        "White",
+        "Blanco",
+        "Wei\xC3\x9F",
+        "\xD0\x91\xD0\xB5\xD0\xBB\xD1\x8B\xD0\xB9");
+
+    add("menu.color.lightgray",
+        "Light Gray",
+        "Gris claro",
+        "Hellgrau",
+        "\xD0\xA1\xD0\xB2\xD0\xB5\xD1\x82\xD0\xBB\xD0\xBE-\xD1\x81\xD0\xB5\xD1\x80\xD1\x8B\xD0\xB9");
+
+    add("menu.color.red",
+        "Red",
+        "Rojo",
+        "Rot",
+        "\xD0\x9A\xD1\x80\xD0\xB0\xD1\x81\xD0\xBD\xD1\x8B\xD0\xB9");
+
+    add("menu.color.orange",
+        "Orange",
+        "Naranja",
+        "Orange",
+        "\xD0\x9E\xD1\x80\xD0\xB0\xD0\xBD\xD0\xB6\xD0\xB5\xD0\xB2\xD1\x8B\xD0\xB9");
+
+    add("menu.color.yellow",
+        "Yellow",
+        "Amarillo",
+        "Gelb",
+        "\xD0\x96\xD1\x91\xD0\xBB\xD1\x82\xD1\x8B\xD0\xB9");
+
+    add("menu.color.green",
+        "Green",
+        "Verde",
+        "Gr\xC3\xBCn",
+        "\xD0\x97\xD0\xB5\xD0\xBB\xD1\x91\xD0\xBD\xD1\x8B\xD0\xB9");
+
+    add("menu.color.blue",
+        "Blue",
+        "Azul",
+        "Blau",
+        "\xD0\xA1\xD0\xB8\xD0\xBD\xD0\xB8\xD0\xB9");
+
+    add("menu.color.purple",
+        "Purple",
+        "Morado",
+        "Lila",
+        "\xD0\xA4\xD0\xB8\xD0\xBE\xD0\xBB\xD0\xB5\xD1\x82\xD0\xBE\xD0\xB2\xD1\x8B\xD0\xB9");
 
     add("menu.color.black",
         "Black",
         "Negro",
         "Schwarz",
-        "\xD0\xA7\xD1\x91\xD1\x80\xD0\xBD\xD1\x8B\xD0\xB9");
-
-    add("menu.color.darkblue",
-        "Dark Blue",
-        "Azul oscuro",
-        "Dunkelblau",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD1\x81\xD0\xB8\xD0\xBD\xD0\xB8\xD0\xB9");
-
-    add("menu.color.darkgreen",
-        "Dark Green",
-        "Verde oscuro",
-        "Dunkelgr\xC3\xBCn",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD0\xB7\xD0\xB5\xD0\xBB\xD1\x91\xD0\xBD\xD1\x8B\xD0\xB9");
-
-    add("menu.color.darkpurple",
-        "Dark Purple",
-        "P\xC3\xBArpura oscuro",
-        "Dunkellila",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD1\x84\xD0\xB8\xD0\xBE\xD0\xBB\xD0\xB5\xD1\x82\xD0\xBE\xD0\xB2\xD1\x8B\xD0\xB9");
-
-    add("menu.color.darkred",
-        "Dark Red",
-        "Rojo oscuro",
-        "Dunkelrot",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD0\xBA\xD1\x80\xD0\xB0\xD1\x81\xD0\xBD\xD1\x8B\xD0\xB9");
-
-    add("menu.color.darkteal",
-        "Dark Teal",
-        "Cerceta oscuro",
-        "Dunkelblaugr\xC3\xBCn",
-        "\xD0\xA2\xD1\x91\xD0\xBC\xD0\xBD\xD0\xBE-\xD0\xB1\xD0\xB8\xD1\x80\xD1\x8E\xD0\xB7\xD0\xBE\xD0\xB2\xD1\x8B\xD0\xB9");
+        "\xD0\xA7\xD0\xB5\xD1\x80\xD0\xBD\xD1\x8B\xD0\xB9");
 
     add("menu.color.custom",
         "Custom...",
@@ -167,7 +180,7 @@ void TranslationProvider::build()
     add("menu.allopen",
         "(all widgets are open)",
         "(todos los widgets abiertos)",
-        "(alle Widgets ge\xC3\xB6\xC3\xB6ffnet)",
+        "(alle Widgets ge\xC3\xB6\xC3\xB6" "ffnet)",
         "(\xD0\xB2\xD1\x81\xD0\xB5 \xD0\xB2\xD0\xB8\xD0\xB4\xD0\xB6\xD0\xB5\xD1\x82\xD1\x8B \xD0\xBE\xD1\x82\xD0\xBA\xD1\x80\xD1\x8B\xD1\x82\xD1\x8B)");
 
     add("menu.language",
@@ -265,4 +278,62 @@ void TranslationProvider::build()
     add("day.fri", "F", "V", "F", "\xD0\x9F");
     add("day.sat", "S", "S", "S", "\xD0\xA1");
     add("day.sun", "S", "D", "S", "\xD0\x92");
+
+    // ── Dutch (nl) ───────────────────────────────────────────────────────────
+    // NL weekdays: Maandag Dinsdag Woensdag Donderdag Vrijdag Zaterdag Zondag
+    //              M       D       W        D         V       Z        Z
+    addLang("nl", "day.mon", "M");
+    addLang("nl", "day.tue", "D");
+    addLang("nl", "day.wed", "W");
+    addLang("nl", "day.thu", "D");
+    addLang("nl", "day.fri", "V");
+    addLang("nl", "day.sat", "Z");
+    addLang("nl", "day.sun", "Z");
+
+    addLang("nl", "month.1",  "JANUARI");
+    addLang("nl", "month.2",  "FEBRUARI");
+    addLang("nl", "month.3",  "MAART");
+    addLang("nl", "month.4",  "APRIL");
+    addLang("nl", "month.5",  "MEI");
+    addLang("nl", "month.6",  "JUNI");
+    addLang("nl", "month.7",  "JULI");
+    addLang("nl", "month.8",  "AUGUSTUS");
+    addLang("nl", "month.9",  "SEPTEMBER");
+    addLang("nl", "month.10", "OKTOBER");
+    addLang("nl", "month.11", "NOVEMBER");
+    addLang("nl", "month.12", "DECEMBER");
+
+    addLang("nl", "menu.close",        "Widget sluiten");
+    addLang("nl", "menu.font",         "Lettertype");
+    addLang("nl", "menu.font.increase","Groter  (Ctrl++)");
+    addLang("nl", "menu.font.default", "Standaard  (Ctrl+0)");
+    addLang("nl", "menu.font.decrease","Kleiner  (Ctrl-)");
+    addLang("nl", "menu.color.all",    "Achtergrondkleur  (alle widgets)");
+    addLang("nl", "menu.color",        "Achtergrondkleur");
+    addLang("nl", "menu.color.white",  "Wit");
+    addLang("nl", "menu.color.lightgray", "Lichtgrijs");
+    addLang("nl", "menu.color.red",    "Rood");
+    addLang("nl", "menu.color.orange", "Oranje");
+    addLang("nl", "menu.color.yellow", "Geel");
+    addLang("nl", "menu.color.green",  "Groen");
+    addLang("nl", "menu.color.blue",   "Blauw");
+    addLang("nl", "menu.color.purple", "Paars");
+    addLang("nl", "menu.color.black",  "Zwart");
+    addLang("nl", "menu.color.custom", "Aangepast...");
+    addLang("nl", "menu.newpostit",    "Nieuw Post-It");
+    addLang("nl", "menu.addwidget",    "Widget toevoegen");
+    addLang("nl", "menu.allopen",      "(alle widgets zijn open)");
+    addLang("nl", "menu.language",     "Taal");
+    addLang("nl", "menu.quit",         "WarpWidgets afsluiten");
+
+    addLang("nl", "disk.title",        "SCHIJFGEBRUIK");
+    addLang("nl", "disk.free",         "MB vrij");
+    addLang("nl", "disk.nodrives",     "Geen schijven gevonden");
+
+    addLang("nl", "weather.loading",   "Laden...");
+    addLang("nl", "weather.updated",   "Bijgewerkt ");
+    addLang("nl", "weather.refresh",   "\xE2\x86\xBB Vernieuwen");
+
+    addLang("nl", "welcome.hint",
+            "Rechts-slepen: verplaatsen  \xE2\x80\xA2  \xE2\x96\xBE menu");
 }

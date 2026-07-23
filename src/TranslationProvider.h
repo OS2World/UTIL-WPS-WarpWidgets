@@ -43,6 +43,8 @@ private:
              const QString &es,
              const QString &de,
              const QString &ru);
+    void addLang(const QString &lang, const QString &key, const QString &value)
+        { m_db[lang][key] = value; }
 };
 
 #endif // TRANSLATIONPROVIDER_H

@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QSet>
 #include <QQmlEngine>
 #include <QQmlContext>
 #include <QQuickView>
@@ -31,6 +32,26 @@
 
 static const QString DEFAULT_BG = "#1A1A1A";
 static const QString APP_NAME   = "WarpWidgets";
+
+#ifdef Q_OS_OS2
+// Send XDM_TOGGLETRANSIENTSTICKY to make hwnd appear on every XPager desktop.
+// Safe to call multiple times; XWorkplace treats it as "ensure sticky".
+static void xpagerMakeSticky(HWND hwnd)
+{
+    struct XWPGlobalShared { HWND hwndDaemonObject; };
+    XWPGlobalShared *pShared = nullptr;
+    if (DosGetNamedSharedMem((PPVOID)&pShared,
+                             (PCSZ)"\\SHAREMEM\\XWORKPLC\\DMNSHARE.DAT",
+                             PAG_READ) == 0)
+    {
+        HWND hwndDaemon = pShared->hwndDaemonObject;
+        if (hwndDaemon)
+            WinSendMsg(hwndDaemon, WM_USER + 431,
+                       (MPARAM)hwnd, (MPARAM)0);
+        DosFreeMem(pShared);
+    }
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // WidgetController — exposed to QML as "Widget"
@@ -150,6 +171,49 @@ public slots:
         QMenu *menu = new QMenu();
         menu->setAttribute(Qt::WA_DeleteOnClose);
 
+        // Derive menu colors from the widget's current background color.
+        QColor bg(m_ctrl->bgColor());
+        double lum = 0.299 * bg.redF() + 0.587 * bg.greenF() + 0.114 * bg.blueF();
+        bool   dark = (lum < 0.5);
+        QColor textCol    = dark ? QColor("#E8E8E8") : QColor("#1A1A1A");
+        QColor hoverBg    = dark ? bg.lighter(170)  : bg.darker(140);
+        QColor hoverText  = dark ? QColor("#FFFFFF") : QColor("#000000");
+        QColor borderCol  = dark ? bg.lighter(180)  : bg.darker(160);
+        QColor sepCol     = dark ? bg.lighter(140)  : bg.darker(120);
+        QColor disabledCol= dark ? QColor("#606060") : QColor("#AAAAAA");
+
+        menu->setStyleSheet(QString(
+            "QMenu {"
+            "  background-color: %1;"
+            "  border: 1px solid %2;"
+            "  border-radius: 6px;"
+            "  padding: 4px 2px;"
+            "  color: %3;"
+            "  font-size: 13px;"
+            "}"
+            "QMenu::item {"
+            "  padding: 6px 28px 6px 14px;"
+            "  border-radius: 4px;"
+            "  margin: 1px 4px;"
+            "}"
+            "QMenu::item:selected {"
+            "  background-color: %4;"
+            "  color: %5;"
+            "}"
+            "QMenu::item:disabled {"
+            "  color: %6;"
+            "}"
+            "QMenu::separator {"
+            "  height: 1px;"
+            "  background: %7;"
+            "  margin: 4px 10px;"
+            "}"
+            "QMenu::right-arrow { width: 8px; height: 8px; right: 6px; }"
+            "QMenu::indicator:checked { width: 8px; height: 8px; left: 6px; }"
+        ).arg(bg.name(), borderCol.name(), textCol.name(),
+              hoverBg.name(), hoverText.name(),
+              disabledCol.name(), sepCol.name()));
+
         TranslationProvider *lang = m_engine->lang();
         auto L = [lang](const QString &key) { return lang ? lang->t(key) : key; };
 
@@ -165,13 +229,15 @@ public slots:
 
         struct Preset { const char *key; const char *hex; };
         static const Preset presets[] = {
-            { "menu.color.darkgray",   "#1A1A1A" },
+            { "menu.color.white",      "#FFFFFF" },
+            { "menu.color.lightgray",  "#D0D0D0" },
+            { "menu.color.red",        "#FF4444" },
+            { "menu.color.orange",     "#FF9922" },
+            { "menu.color.yellow",     "#FFE033" },
+            { "menu.color.green",      "#44BB44" },
+            { "menu.color.blue",       "#3388FF" },
+            { "menu.color.purple",     "#9955CC" },
             { "menu.color.black",      "#000000" },
-            { "menu.color.darkblue",   "#0A1628" },
-            { "menu.color.darkgreen",  "#0A2010" },
-            { "menu.color.darkpurple", "#1A0A28" },
-            { "menu.color.darkred",    "#200808" },
-            { "menu.color.darkteal",   "#082020" },
         };
         QList<QAction *> colorActs;
         for (const Preset &p : presets) {
@@ -294,6 +360,15 @@ protected:
             break;
         }
 
+        // Re-apply XPager sticky after every resize.
+        // Widgets with dynamic heights (e.g. diskusage) trigger a window resize
+        // when their content changes, which can cause XPager to drop the sticky flag.
+#ifdef Q_OS_OS2
+        case QEvent::Resize:
+            xpagerMakeSticky((HWND)m_view->winId());
+            break;
+#endif
+
         default: break;
         }
         return false;
@@ -332,6 +407,20 @@ WidgetEngine::~WidgetEngine()
     qDeleteAll(m_views);
 }
 
+// Estimated widget sizes at fontScale=1 (width × height).
+static const QMap<QString, QSize> kWidgetSizes = {
+    {"clock.qml",        {280, 110}},
+    {"analogclock.qml",  {240, 268}},
+    {"calendar.qml",     {500, 210}},
+    {"sysmon.qml",       {280, 130}},
+    {"diskusage.qml",    {280, 170}},
+    {"weather.qml",      {280, 210}},
+    {"calculator.qml",   {220, 368}},
+    {"welcome.qml",      {280, 100}},
+    {"postit.qml",       {220, 200}},
+};
+static const QSize kDefaultWidgetSize(280, 150);
+
 // Return the usable screen rectangle (falls back to 1024×768 if Qt can't query it).
 static QRect screenRect()
 {
@@ -353,32 +442,57 @@ static QPoint clampToScreen(const QPoint &pos, int minVisible = 40)
     return QPoint(x, y);
 }
 
+// Scan the screen in a grid to find a position where 'size' doesn't overlap
+// any of the occupied rectangles. Falls back to top-left if no gap is found.
+static QPoint findFreeSpot(const QList<QRect> &occupied,
+                           const QSize &size, const QRect &screen)
+{
+    const int margin = 10;
+    const int step   = 20;
+    for (int y = screen.top() + margin;
+         y + size.height() <= screen.bottom() - margin; y += step) {
+        for (int x = screen.left() + margin;
+             x + size.width() <= screen.right() - margin; x += step) {
+            QRect candidate(x, y, size.width(), size.height());
+            bool free = true;
+            for (const QRect &r : occupied) {
+                if (candidate.intersects(r)) { free = false; break; }
+            }
+            if (free) return QPoint(x, y);
+        }
+    }
+    // No completely free spot found — place near top-left.
+    return QPoint(screen.left() + margin, screen.top() + margin);
+}
+
 void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
 {
     m_widgetDir = dirPath;
     QDir dir(dirPath);
     if (!dir.exists()) { qWarning() << "Widget dir not found:" << dirPath; return; }
 
-    QRect  screen  = screenRect();
-    // Auto-placement cursor: fills a column then starts a new one to the right.
-    int    autoX   = screen.left() + 20;
-    int    autoY   = screen.top()  + 20;
-    int    colW    = 0;   // widest widget in the current column
+    // Detect first run: settings file has never been written by this app.
+    const bool firstRun = !m_settings.contains("app/firstRunDone");
 
-    // Estimated default heights for auto-placement (avoids loading before placing).
-    // These match the QML height: N * Widget.fontScale with default fontScale=1.
-    static const QMap<QString, int> kEstH = {
-        {"clock.qml",       110}, {"analogclock.qml", 220}, {"calendar.qml",  210},
-        {"sysmon.qml",      130}, {"diskusage.qml",   170}, {"weather.qml",   210},
-        {"calculator.qml",  368}, {"welcome.qml",     100},
+    // Widgets shown on first run, in the order they are placed.
+    // Others are available via "Add Widget" but start closed.
+    static const QStringList kFirstRunOrder = {
+        "welcome.qml", "analogclock.qml", "weather.qml",
+        "calculator.qml"
+        // postit is added separately below
     };
-    static const int kDefaultH = 150;
-    static const int kDefaultW = 280;
+    static const QSet<QString> kFirstRunSet(kFirstRunOrder.begin(), kFirstRunOrder.end());
+
+    QRect  screen = screenRect();
+    // Auto-placement cursor: fills a column then starts a new one to the right.
+    int    autoX  = screen.left() + 20;
+    int    autoY  = screen.top()  + 20;
+    int    colW   = 0;
 
     auto nextAutoPos = [&](const QString &filename) -> QPoint {
-        int wh = kEstH.value(filename, kDefaultH);
-
-        // If this widget would overflow the screen bottom, start a new column.
+        QSize sz = kWidgetSizes.value(filename, kDefaultWidgetSize);
+        int wh = sz.height();
+        int ww = sz.width();
         if (autoY + wh > screen.bottom() - 10 && colW > 0) {
             autoX += colW + 16;
             autoY  = screen.top() + 20;
@@ -386,18 +500,44 @@ void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
         }
         QPoint p(autoX, autoY);
         autoY += wh + 10;
-        colW = qMax(colW, kDefaultW);
+        colW = qMax(colW, ww);
         return p;
     };
 
-    // Load regular (single-instance) widgets
-    for (const QFileInfo &fi : dir.entryInfoList({"*.qml"}, QDir::Files)) {
-        if (fi.fileName() == "postit.qml") continue; // handled separately below
-        const QString key = fi.fileName();
+    // Build a map of available .qml files for ordered placement on first run.
+    QMap<QString, QString> availableFiles; // filename → absolute path
+    for (const QFileInfo &fi : dir.entryInfoList({"*.qml"}, QDir::Files))
+        availableFiles.insert(fi.fileName(), fi.absoluteFilePath());
+
+    // Determine load order: first-run order first, then remaining files.
+    QStringList loadOrder;
+    if (firstRun) {
+        for (const QString &name : kFirstRunOrder)
+            if (availableFiles.contains(name))
+                loadOrder << name;
+
+        // Stamp open=false for every widget not in the first-run set so that
+        // the second run finds an explicit false instead of defaulting to true.
         m_settings.beginGroup("widgets");
-        bool open = m_settings.value(key + "/open", true).toBool();
-        int  sx   = m_settings.value(key + "/x", -1).toInt();
-        int  sy   = m_settings.value(key + "/y", -1).toInt();
+        for (const QString &name : availableFiles.keys()) {
+            if (name == "postit.qml") continue;
+            if (!kFirstRunSet.contains(name))
+                m_settings.setValue(name + "/open", false);
+        }
+        m_settings.endGroup();
+    } else {
+        loadOrder = availableFiles.keys(); // alphabetical (QMap is sorted)
+    }
+
+    // Load regular (single-instance) widgets
+    for (const QString &filename : loadOrder) {
+        if (filename == "postit.qml") continue;
+        const QString &path = availableFiles[filename];
+
+        m_settings.beginGroup("widgets");
+        bool open = m_settings.value(filename + "/open", true).toBool();
+        int  sx   = m_settings.value(filename + "/x", -1).toInt();
+        int  sy   = m_settings.value(filename + "/y", -1).toInt();
         m_settings.endGroup();
 
         if (!open) continue;
@@ -406,37 +546,50 @@ void WidgetEngine::loadWidgetsFromDir(const QString &dirPath)
         if (sx >= 0 && sy >= 0)
             pos = clampToScreen(QPoint(sx, sy));
         else
-            pos = nextAutoPos(fi.fileName());
+            pos = nextAutoPos(filename);
 
-        loadWidget(fi.absoluteFilePath(), pos, key);
+        loadWidget(path, pos, filename);
     }
 
-    // Restore saved Post-It instances
+    // Restore (or create) Post-It instances — handled here so the auto-placement
+    // cursor is still in scope and the first post-it doesn't overlap other widgets.
     QString postitPath = dir.filePath("postit.qml");
     if (QFile::exists(postitPath)) {
         m_settings.beginGroup("widgets");
         int count = m_settings.value("postit/count", 0).toInt();
         m_settings.endGroup();
-        for (int i = 1; i <= count; ++i) {
-            QString key = QString("postit.qml#%1").arg(i);
-            m_settings.beginGroup("widgets");
-            bool open = m_settings.value(key + "/open", true).toBool();
-            int  sx   = m_settings.value(key + "/x", -1).toInt();
-            int  sy   = m_settings.value(key + "/y", -1).toInt();
-            m_settings.endGroup();
-            if (!open) continue;
 
-            QPoint pos;
-            if (sx >= 0 && sy >= 0)
-                pos = clampToScreen(QPoint(sx, sy));
-            else
-                pos = clampToScreen(QPoint(screen.left() + 40 + (i % 5) * 30,
-                                           screen.top()  + 40 + (i % 5) * 30));
+        if (count == 0) {
+            // First run: allocate instance #1 and place it via the cursor.
+            m_settings.beginGroup("widgets");
+            m_settings.setValue("postit/count", 1);
+            m_settings.endGroup();
+            QString key = "postit.qml#1";
+            QPoint pos = nextAutoPos("postit.qml");
             loadWidget(postitPath, pos, key);
+        } else {
+            for (int i = 1; i <= count; ++i) {
+                QString key = QString("postit.qml#%1").arg(i);
+                m_settings.beginGroup("widgets");
+                bool open = m_settings.value(key + "/open", true).toBool();
+                int  sx   = m_settings.value(key + "/x", -1).toInt();
+                int  sy   = m_settings.value(key + "/y", -1).toInt();
+                m_settings.endGroup();
+                if (!open) continue;
+
+                QPoint pos;
+                if (sx >= 0 && sy >= 0)
+                    pos = clampToScreen(QPoint(sx, sy));
+                else
+                    pos = nextAutoPos("postit.qml");
+                loadWidget(postitPath, pos, key);
+            }
         }
-        // If no saved instances, open one by default
-        if (count == 0)
-            openNewInstance(postitPath);
+    }
+
+    if (firstRun) {
+        m_settings.setValue("app/firstRunDone", true);
+        m_settings.sync();
     }
 }
 
@@ -456,19 +609,39 @@ void WidgetEngine::openNewInstance(const QString &qmlFile)
 
 void WidgetEngine::openWidget(const QString &qmlFile)
 {
+    const QString key = QFileInfo(qmlFile).fileName();
+
+    // If no color has been saved for this widget yet, inherit the welcome
+    // widget's current color so new widgets match the established theme.
     m_settings.beginGroup("widgets");
-    QString key = QFileInfo(qmlFile).fileName();
+    if (!m_settings.contains(key + "/bgColor")) {
+        for (WidgetController *ctrl : m_controllers) {
+            if (ctrl->settingsKey() == "welcome.qml") {
+                m_settings.setValue(key + "/bgColor", ctrl->bgColor());
+                break;
+            }
+        }
+    }
     m_settings.setValue(key + "/open", true);
     int sx = m_settings.value(key + "/x", -1).toInt();
     int sy = m_settings.value(key + "/y", -1).toInt();
     m_settings.endGroup();
 
-    QPoint pos(20, 20);
+    QPoint pos;
     if (sx >= 0 && sy >= 0) {
-        pos = QPoint(sx, sy);
+        pos = clampToScreen(QPoint(sx, sy));
     } else {
+        // Collect bounding rects of all currently visible widgets.
+        QList<QRect> occupied;
         for (QQuickView *v : m_views)
-            pos.ry() += v->rootObject() ? (int)v->rootObject()->height() + 10 : 0;
+            if (v->isVisible())
+                occupied << QRect(v->position(),
+                                  QSize(v->width() > 0 ? v->width()  : kDefaultWidgetSize.width(),
+                                        v->height()> 0 ? v->height() : kDefaultWidgetSize.height()));
+
+        QSize estSize = kWidgetSizes.value(QFileInfo(qmlFile).fileName(),
+                                           kDefaultWidgetSize);
+        pos = findFreeSpot(occupied, estSize, screenRect());
     }
     loadWidget(qmlFile, pos, key);
 }
@@ -544,26 +717,8 @@ void WidgetEngine::loadWidget(const QString &qmlFile, const QPoint &pos,
         if (hsw != NULLHANDLE)
             WinRemoveSwitchEntry(hsw);
 
-        // Make the window "sticky" in XPager so it appears on every virtual desktop.
-        // XWorkplace exposes XDM_TOGGLETRANSIENTSTICKY (WM_USER+431) on its daemon
-        // object window, whose handle is in the XWorkplace named shared-memory block.
-        {
-            // Minimal layout of XWPGLOBALSHARED — only the first field is needed
-            struct XWPGlobalShared { HWND hwndDaemonObject; };
-            XWPGlobalShared *pShared = nullptr;
-            if (DosGetNamedSharedMem((PPVOID)&pShared,
-                                     (PCSZ)"\\SHAREMEM\\XWORKPLC\\DMNSHARE.DAT",
-                                     PAG_READ) == 0)
-            {
-                HWND hwndDaemon = pShared->hwndDaemonObject;
-                if (hwndDaemon)
-                    WinSendMsg(hwndDaemon,
-                               WM_USER + 431,   /* XDM_TOGGLETRANSIENTSTICKY */
-                               (MPARAM)hwnd,
-                               (MPARAM)0);
-                DosFreeMem(pShared);
-            }
-        }
+        // Make the window sticky in XPager so it appears on every virtual desktop.
+        xpagerMakeSticky(hwnd);
     }
 #endif
 
