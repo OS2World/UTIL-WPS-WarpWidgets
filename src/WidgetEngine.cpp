@@ -34,22 +34,35 @@ static const QString DEFAULT_BG = "#1A1A1A";
 static const QString APP_NAME   = "WarpWidgets";
 
 #ifdef Q_OS_OS2
-// Send XDM_TOGGLETRANSIENTSTICKY to make hwnd appear on every XPager desktop.
-// Safe to call multiple times; XWorkplace treats it as "ensure sticky".
-static void xpagerMakeSticky(HWND hwnd)
+// XDM_TOGGLETRANSIENTSTICKY (WM_USER+431) is a pure toggle — calling it twice
+// cancels out. XDM_ISTRANSIENTSTICKY (WM_USER+432) queries the current state.
+// xpagerSetSticky() uses the query so it is safe to call any number of times.
+static HWND xpagerDaemonHwnd()
 {
     struct XWPGlobalShared { HWND hwndDaemonObject; };
     XWPGlobalShared *pShared = nullptr;
+    HWND hwndDaemon = NULLHANDLE;
     if (DosGetNamedSharedMem((PPVOID)&pShared,
                              (PCSZ)"\\SHAREMEM\\XWORKPLC\\DMNSHARE.DAT",
                              PAG_READ) == 0)
     {
-        HWND hwndDaemon = pShared->hwndDaemonObject;
-        if (hwndDaemon)
-            WinSendMsg(hwndDaemon, WM_USER + 431,
-                       (MPARAM)hwnd, (MPARAM)0);
+        hwndDaemon = pShared->hwndDaemonObject;
         DosFreeMem(pShared);
     }
+    return hwndDaemon;
+}
+
+static void xpagerSetSticky(HWND hwnd, bool wantSticky)
+{
+    HWND hwndDaemon = xpagerDaemonHwnd();
+    if (!hwndDaemon) return;
+
+    bool isSticky = (bool)WinSendMsg(hwndDaemon,
+                                     WM_USER + 432,  // XDM_ISTRANSIENTSTICKY
+                                     (MPARAM)hwnd, (MPARAM)0);
+    if (isSticky != wantSticky)
+        WinSendMsg(hwndDaemon, WM_USER + 431,  // XDM_TOGGLETRANSIENTSTICKY
+                   (MPARAM)hwnd, (MPARAM)0);
 }
 #endif
 
@@ -365,7 +378,7 @@ protected:
         // when their content changes, which can cause XPager to drop the sticky flag.
 #ifdef Q_OS_OS2
         case QEvent::Resize:
-            xpagerMakeSticky((HWND)m_view->winId());
+            xpagerSetSticky((HWND)m_view->winId(), true);
             break;
 #endif
 
@@ -717,8 +730,7 @@ void WidgetEngine::loadWidget(const QString &qmlFile, const QPoint &pos,
         if (hsw != NULLHANDLE)
             WinRemoveSwitchEntry(hsw);
 
-        // Make the window sticky in XPager so it appears on every virtual desktop.
-        xpagerMakeSticky(hwnd);
+        xpagerSetSticky(hwnd, true);
     }
 #endif
 

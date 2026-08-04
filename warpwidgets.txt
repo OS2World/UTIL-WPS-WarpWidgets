@@ -1,0 +1,235 @@
+===========================================================================
+ WarpWidgets 1.0
+ Desktop widgets for ArcaOS and OS/2 Warp
+===========================================================================
+
+ Project URL : https://github.com/OS2World/UTIL-WPS-WarpWidgets
+ License     : BSD 3-Clause
+ Author      : Martin Iturbide
+ Requires    : ArcaOS (bww bitwise works Qt 5.15.2 runtime)
+
+
+---------------------------------------------------------------------------
+ DESCRIPTION
+---------------------------------------------------------------------------
+
+WarpWidgets is a lightweight desktop widget application for ArcaOS and
+OS/2 Warp. It places frameless, always-on-top information panels directly
+on the Workplace Shell desktop. Widgets are visible on all XPager virtual
+desktops. Settings are saved automatically when the application closes.
+
+
+---------------------------------------------------------------------------
+ INCLUDED WIDGETS
+---------------------------------------------------------------------------
+
+  analogclock  — Analog clock face with hour, minute and second hands.
+
+  clock        — Digital clock with current time and date.
+
+  calendar     — Monthly calendar with current day highlighted.
+
+  sysmon       — System monitor: CPU usage, RAM used/total.
+
+  diskusage    — Disk usage for all detected drives (C: through Z:).
+                 A configuration button lets you show or hide individual
+                 drives.
+
+  weather      — Current weather conditions fetched from wttr.in.
+                 Shows city, temperature, humidity and wind. Tap the
+                 refresh button to update manually.
+
+  calculator   — Basic four-function calculator.
+
+  postit       — Sticky note with editable text. Multiple instances can
+                 be open at the same time.
+
+  welcome      — Welcome/hint panel shown on the first run.
+
+
+---------------------------------------------------------------------------
+ USING WARPWIDGETS
+---------------------------------------------------------------------------
+
+ Starting
+   Run  warpwidgets.exe  from the program directory, or create a
+   Workplace Shell program object pointing to it.
+
+   On the very first run WarpWidgets opens a default set of widgets
+   (welcome, analog clock, weather, calculator, post-it) arranged so
+   they do not overlap. All other widgets are available through the
+   "Add Widget" menu.
+
+ Context menu
+   Every widget has a small  ▾  button in its top-right corner. You can
+   also right-drag any widget to move it; releasing the button opens the
+   same context menu. The menu provides:
+
+     Close this widget        — hides this widget (re-open via Add Widget)
+     Font                     — increase / reset / decrease the widget's
+                                text and element scale
+     Background colour        — choose a preset or a custom colour;
+                                the welcome widget's colour menu applies
+                                the chosen colour to all widgets at once
+     Add Widget               — open any widget that is currently closed
+     New Post-It              — add another sticky-note instance
+     Language                 — switch the interface language (see below)
+     Quit WarpWidgets         — close all widgets and exit
+
+ Moving widgets
+   Hold the RIGHT mouse button on a widget body and drag to reposition it.
+   The new position is saved when you release the button.
+
+ Font scale
+   Use the Font submenu or the keyboard shortcuts:
+     Ctrl++   increase size
+     Ctrl+0   reset to default
+     Ctrl+-   decrease size
+
+ Colours
+   Available presets: White, Light Gray, Red, Orange, Yellow, Green,
+   Blue, Purple, Black. "Custom..." opens a colour-picker dialog.
+   Setting the colour from the welcome widget changes all widgets.
+
+ Settings location
+   All settings are stored in the OS/2 INI-style file:
+     %HOME%\.config\WarpWidgets\WarpWidgets.ini
+
+
+---------------------------------------------------------------------------
+ LANGUAGE SUPPORT
+---------------------------------------------------------------------------
+
+ Supported languages (selectable from the context menu):
+
+   English    (en)
+   Spanish    (es)   Español
+   German     (de)   Deutsch
+   Dutch      (nl)   Nederlands
+   Russian    (ru)   Русский
+
+ No external translation files are needed; all strings are compiled in.
+
+
+---------------------------------------------------------------------------
+ REQUIREMENTS
+---------------------------------------------------------------------------
+
+  Operating system : ArcaOS 5.x  or  OS/2 Warp 4 with appropriate fixes
+  Qt runtime       : bww bitwise works Qt 5.15.2 for OS/2
+                     (qt5152_20240929.zip or later from the bww repository)
+  XWorkplace       : Recommended for XPager virtual-desktop integration
+                     (widgets appear on all virtual desktops automatically)
+
+
+---------------------------------------------------------------------------
+ BUILDING FROM SOURCE
+---------------------------------------------------------------------------
+
+ Tools required
+   GCC 9.2.0 (i686-pc-os2-emx) with EMX OMF linker support
+   Qt 5.15.2 for OS/2 (qmake-qt5, make)
+
+ Build steps
+   From the project root directory, run:
+
+     compile.cmd
+
+   If the linker is not found, edit compile.cmd and change the line:
+     set EMXOMFLD_LINKER=wlink.exe
+   to:
+     set EMXOMFLD_LINKER=wl.exe
+
+   On success, the executable is written to  bin\warpwidgets.exe  and a
+   full build log is saved to  bin\build.log.
+
+ Directory layout
+   src\            C++/Qt source files
+   widgets\        QML widget definitions
+   bin\            Build output (exe, intermediate object files)
+   images\         Application icon (PNG and ICO)
+   compile.cmd     Build script for ArcaOS / OS/2 Warp
+
+
+---------------------------------------------------------------------------
+ ADDING YOUR OWN WIDGETS
+---------------------------------------------------------------------------
+
+ A widget is a single QML file placed in the  widgets\  directory next to
+ warpwidgets.exe. The following context properties are available to every
+ widget:
+
+   Widget   — WidgetController
+                Widget.fontScale   (double)  current scale factor
+                Widget.bgColor     (string)  current background colour
+                Widget.settingsKey (string)  unique key for this instance
+                Widget.getExtra(key, default) / Widget.setExtra(key, value)
+                                   — per-widget persistent storage
+                Widget.requestContextMenu()  — open the standard menu
+
+   SysInfo  — SysInfoProvider
+                SysInfo.currentTime, currentDate
+                SysInfo.cpuPercent, ramPercent, ramUsedMB, ramTotalMB
+                SysInfo.drives  (list of { letter, totalMB, freeMB,
+                                           usedMB, percent })
+
+   Weather  — WeatherProvider
+                Weather.city, temperature, humidity, wind, condition
+                Weather.loading, lastUpdated
+                Weather.refresh()
+
+   Lang     — TranslationProvider
+                Lang.language              current language code
+                Lang.t("key")              translated string
+                (Lang.language, Lang.t("key"))  — binding that updates
+                                                   when language changes
+
+ Drop the new .qml file into the widgets\ directory and restart
+ WarpWidgets; it will appear in the "Add Widget" menu automatically.
+
+
+---------------------------------------------------------------------------
+ KNOWN LIMITATIONS
+---------------------------------------------------------------------------
+
+  - Weather data requires an active internet connection and is fetched
+    from the public wttr.in service.
+
+  - The weather widget city is configured by editing WarpWidgets.ini
+    directly (key: weather/city).
+
+  - Per-virtual-desktop widget sets are not supported. All widgets
+    appear on all XPager desktops simultaneously.
+
+
+---------------------------------------------------------------------------
+ LICENSE
+---------------------------------------------------------------------------
+
+ BSD 3-Clause License
+ Copyright (c) 2026, Martin Iturbide
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+
+   1. Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in
+      the documentation and/or other materials provided with the
+      distribution.
+
+   3. Neither the name of the copyright holder nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ "AS IS" AND WITHOUT ANY WARRANTY OF ANY KIND. SEE THE LICENSE FILE
+ FOR THE FULL TEXT.
+
+
+===========================================================================
+ End of warpwidgets.txt
+===========================================================================
