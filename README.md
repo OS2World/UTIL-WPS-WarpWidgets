@@ -1,6 +1,8 @@
 # WarpWidgets
 Desktop widget engine for ArcaOS / OS/2 Warp. Displays configurable floating widgets on the Workplace Shell desktop, including a clock, analog clock, calendar, system monitor, disk usage, weather, calculator, and sticky notes.
 
+![WarpWidgets ScreenShot](/images/WarpWidgets.png)
+
 ## LICENSE
 * BSD 3-Clause
 
